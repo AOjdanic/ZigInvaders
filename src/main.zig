@@ -25,7 +25,7 @@ pub fn main() !void {
     var game_over = false;
 
     while (!game_over) {
-        const key = stdin.*.takeByte() catch {
+        const key = stdin.takeByte() catch {
             continue;
         };
 

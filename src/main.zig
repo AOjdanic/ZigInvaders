@@ -91,7 +91,8 @@ fn clearScreen() void {
     // [2J by spec deletes the entire screen and even moves to top left
     // corner, but it doesn't seem to work on my os for moving the cursor,
     // works only on some operating systems
-    print("\x1b[2J\x1b[H", .{});
+    // print("\x1b[2J\x1b[H", .{});
+    print("\x1b[H", .{});
 }
 
 // alien and player structs
@@ -124,16 +125,23 @@ fn clearArena() void {
 }
 
 fn drawArena(aliens: *[55]Alien, player: *Player) void {
+    var arena_string: [1968]u8 = undefined;
     for (aliens.*) |alien| {
         arena[alien.y][alien.x] = alien.symbol;
     }
 
     arena[player.y][player.x] = player.symbol;
 
-    for (arena) |row| {
-        print("{s}", .{row});
-        print("\n", .{});
+    for (arena, 0..) |row, row_index| {
+        for (row, 0..) |char, char_index| {
+            if (char_index == 0) {
+                arena_string[@as(u16, @intCast(row_index)) * WIDTH + @as(u16, @intCast(char_index))] = '\n';
+            }
+            arena_string[@as(u16, @intCast(row_index)) * WIDTH + @as(u16, @intCast(char_index + 1))] = char;
+        }
     }
+
+    print("{s}", .{arena_string});
 }
 
 fn createAliens(aliens: *[55]Alien) void {
@@ -166,7 +174,7 @@ pub fn main() !void {
     setNonBlockingInputMode();
 
     // create an array of poll structs, which listen on input events
-    var poll_fds = [_]std.posix.pollfd{.{ .fd = c.STDIN_FILENO, .events = std.posix.POLL.IN, .revents = 0 }};
+    var files_to_poll_input_from = [_]std.posix.pollfd{.{ .fd = c.STDIN_FILENO, .events = std.posix.POLL.IN, .revents = 0 }};
 
     var aliens: [55]Alien = undefined;
     createAliens(&aliens);
@@ -184,7 +192,7 @@ pub fn main() !void {
         clearArena();
         drawArena(&aliens, &player);
 
-        const char = getInputKey(&poll_fds) catch continue;
+        const char = getInputKey(&files_to_poll_input_from) catch continue;
         if (char == 'q') {
             // end game loop
             break;
